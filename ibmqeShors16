@@ -1,0 +1,41 @@
+import numpy as np
+from qiskit import QuantumCircuit, Aer, execute
+
+# Define the quantum subroutine for Shor's algorithm
+def shor_subroutine(circuit, a, N, n):
+    # Apply the modular exponentiation gate
+    for i in range(n):
+        circuit.x(i)
+    for i in range(n):
+        for j in range(2 ** i):
+            circuit.swap(i, n - 1 - i)
+        for j in range(2 ** i):
+            circuit.cx(i, n)
+        for j in range(2 ** i):
+            circuit.swap(i, n - 1 - i)
+    for i in range(n):
+        circuit.measure(i, i)
+
+# Define the main function for Shor's algorithm
+def shor_algorithm(N):
+    n = int(np.ceil(np.log2(N)))
+    a = 2
+    while np.gcd(a, N) != 1:
+        a += 1
+    circuit = QuantumCircuit(n + 1, n)
+    circuit.x(n)
+    shor_subroutine(circuit, a, N, n)
+    backend = Aer.get_backend('qasm_simulator')
+    result = execute(circuit, backend=backend, shots=1024).result()
+    counts = result.get_counts(circuit)
+    measured_states = list(map(int, list(counts.keys())))
+    for measured_state in measured_states:
+        x = measured_state >> 1
+        if np.mod(a ** x, N) == np.mod(measured_state, 2):
+            factor1 = np.gcd(a ** x + 1, N)
+            factor2 = np.gcd(a ** x - 1, N)
+            return factor1, factor2
+
+# Call the Shor's algorithm function to factor 16
+factors = shor_algorithm(16)
+print(factors)
